@@ -119,20 +119,10 @@ function renderEmpNameGrid(){
   g.querySelectorAll('.empNameInput').forEach(inp=>{
     inp.addEventListener('input', e=>{
       EMP_NAMES[+e.target.dataset.idx] = e.target.value || `근무자${+e.target.dataset.idx+1}`;
-      refreshIcsEmployeeSelect();
       if(scheduleGrid) renderScheduleTab();
     });
   });
   renderTargetOffTable();
-  refreshIcsEmployeeSelect();
-}
-
-function refreshIcsEmployeeSelect(){
-  const sel = document.getElementById('icsEmployeeSelect');
-  if(!sel) return;
-  const prevVal = sel.value;
-  sel.innerHTML = EMP_NAMES.map((n,i)=>`<option value="${i}">${n}</option>`).join('');
-  if(prevVal !== '' && +prevVal < EMP_NAMES.length) sel.value = prevVal;
 }
 
 function renderTargetOffTable(){
@@ -459,7 +449,9 @@ function renderStatTables(){
   const periodStats = computeStatsByPeriod();
 
   periodStats.forEach((periodData, p) => {
-    let html = `<div class="stat-section-title">${periodLabels[p]} (해당 구간 휴무 목표 대비)</div>`;
+    const startDi = p * 28, endDi = Math.min(startDi + 28, DAYS.length) - 1;
+    const dateRange = (DAYS[startDi] && DAYS[endDi]) ? ` (${DAYS[startDi].label}~${DAYS[endDi].label})` : '';
+    let html = `<div class="stat-section-title">${periodLabels[p]}${dateRange} (해당 구간 휴무 목표 대비)</div>`;
     html += '<table class="stat-table"><tr><th>근무자</th><th>H</th><th>S</th><th>S2</th><th>N</th><th>W</th><th>AS</th><th>휴무(O)</th><th>목표</th></tr>';
     periodData.forEach((c, idx) => {
       const target = targetOffDays[idx][p];
@@ -702,25 +694,26 @@ function icsDateStr(dateObj){
 }
 function exportIcs(){
   if(!scheduleGrid){ alert('먼저 스케줄을 생성하세요.'); return; }
-  const empIdx = +document.getElementById('icsEmployeeSelect').value;
   const includeOff = document.getElementById('icsIncludeOff').checked;
   const now = new Date();
   let lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//교대근무스케줄러//KO','CALSCALE:GREGORIAN'];
-  for(let di=0; di<DAYS.length; di++){
-    const code = scheduleGrid[empIdx][di];
-    if(code === 'O' && !includeOff) continue;
-    const d = DAYS[di].date;
-    const nd = new Date(d); nd.setDate(d.getDate()+1);
-    lines.push('BEGIN:VEVENT');
-    lines.push(`UID:${DAYS[di].iso}-${empIdx}-${code}@shift-scheduler`);
-    lines.push(`DTSTAMP:${icsDateStr(now)}T000000Z`);
-    lines.push(`DTSTART;VALUE=DATE:${icsDateStr(d)}`);
-    lines.push(`DTEND;VALUE=DATE:${icsDateStr(nd)}`);
-    lines.push(`SUMMARY:${code === 'O' ? '휴무' : code + ' 근무'}`);
-    lines.push('END:VEVENT');
+  for(let empIdx=0; empIdx<6; empIdx++){
+    for(let di=0; di<DAYS.length; di++){
+      const code = scheduleGrid[empIdx][di];
+      if(code === 'O' && !includeOff) continue;
+      const d = DAYS[di].date;
+      const nd = new Date(d); nd.setDate(d.getDate()+1);
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${DAYS[di].iso}-${empIdx}-${code}@shift-scheduler`);
+      lines.push(`DTSTAMP:${icsDateStr(now)}T000000Z`);
+      lines.push(`DTSTART;VALUE=DATE:${icsDateStr(d)}`);
+      lines.push(`DTEND;VALUE=DATE:${icsDateStr(nd)}`);
+      lines.push(`SUMMARY:${EMP_NAMES[empIdx]} ${code === 'O' ? '휴무' : code + ' 근무'}`);
+      lines.push('END:VEVENT');
+    }
   }
   lines.push('END:VCALENDAR');
-  downloadBlob(new Blob([lines.join('\r\n')], {type:'text/calendar;charset=utf-8;'}), `${EMP_NAMES[empIdx]}_스케줄.ics`);
+  downloadBlob(new Blob([lines.join('\r\n')], {type:'text/calendar;charset=utf-8;'}), `전체_스케줄.ics`);
 }
 document.getElementById('exportIcs').addEventListener('click', exportIcs);
 
