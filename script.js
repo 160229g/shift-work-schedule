@@ -1,6 +1,9 @@
 const SHIFT_CODES = ['H','S','S2','N','W','AS','O'];
 const CODE_LABEL = {H:'H',S:'S',S2:'S2',N:'N',W:'W',AS:'AS',O:'휴무'};
-const CRITICAL_SHIFTS = ['H','S','N','W']; // 최소 인원 유지 대상 (월~토 4명 필수)
+const CRITICAL_SHIFTS = ['H','S','N','W']; // 월~토 최소 인원 유지 대상 (4명 필수)
+const CRITICAL_MIN = 4;
+const SUNDAY_CRITICAL_SHIFTS = ['AS','N','W']; // 일요일 최소 인원 유지 대상 (3명 필수)
+const SUNDAY_CRITICAL_MIN = 3;
 const SHIFT_HEX = {H:'3B82F6', S:'10B981', S2:'0EA5E9', N:'8B5CF6', W:'F59E0B', AS:'F43F5E', O:'E2E8F0'};
 const SHIFT_TEXT_HEX = {H:'FFFFFF', S:'FFFFFF', S2:'FFFFFF', N:'FFFFFF', W:'1E293B', AS:'FFFFFF', O:'1E293B'};
 
@@ -59,6 +62,7 @@ let DAYS = [];
 let scheduleGrid = null;
 let lastWarnings = [];
 let periodLocked = [false, false, false];
+let violatedDays = [];
 
 function fmt(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -229,15 +233,33 @@ const EMP_PATTERN_84 = [
   ['H','S','S','N','W','O','O','S','S','N','W','O','H','AS','S','N','W','O','H','O','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','H','AS','S','N','W','O','H','O','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O']
 ];
 
-function isSafeToOff(empIdx, dayIdx, currentGrid) {
-    // 일요일(dow===0)은 최소인원 제한 없음. 월~토(dow 1~6)는 S,N,W,H 4명 이상 유지 필수.
-    const dow = DAYS[dayIdx] ? DAYS[dayIdx].dow : null;
-    if(dow === 0) return true;
-    let criticalCount = 0;
-    for(let i=0; i<6; i++) {
-        if(i !== empIdx && CRITICAL_SHIFTS.includes(currentGrid[i][dayIdx])) criticalCount++;
+// 요일별 최소 인원 규칙: 월~토는 S,N,W,H 4명 이상, 일요일은 AS,N,W 3명 이상.
+function dayRequirement(dow){
+    return dow === 0 ? {shifts: SUNDAY_CRITICAL_SHIFTS, min: SUNDAY_CRITICAL_MIN} : {shifts: CRITICAL_SHIFTS, min: CRITICAL_MIN};
+}
+function countCritical(currentGrid, dayIdx, dow, excludeIdx){
+    const req = dayRequirement(dow);
+    let count = 0;
+    for(let i=0; i<6; i++){
+        if(i !== excludeIdx && req.shifts.includes(currentGrid[i][dayIdx])) count++;
     }
-    return criticalCount >= 4;
+    return count;
+}
+function isSafeToOff(empIdx, dayIdx, currentGrid) {
+    const dow = DAYS[dayIdx] ? DAYS[dayIdx].dow : null;
+    if(dow === null) return true;
+    const req = dayRequirement(dow);
+    return countCritical(currentGrid, dayIdx, dow, empIdx) >= req.min;
+}
+// 생성이 끝난 스케줄 전체를 훑어 규칙(월~토 4명 / 일요일 3명)이 깨진 날짜 인덱스를 모아 반환한다.
+function computeViolatedDays(currentGrid){
+    const violated = [];
+    for(let di=0; di<DAYS.length; di++){
+        const dow = DAYS[di].dow;
+        const req = dayRequirement(dow);
+        if(countCritical(currentGrid, di, dow, -1) < req.min) violated.push(di);
+    }
+    return violated;
 }
 
 function generateSchedule(){
@@ -349,6 +371,12 @@ function generateSchedule(){
     }
   }
 
+  // 4. 최종 인원 규칙 검증 (월~토 4명 / 일요일 3명) - 깨진 날짜는 휴무를 되돌리지 않고 화면에 빨간 테두리로만 표시
+  violatedDays = computeViolatedDays(grid);
+  if(violatedDays.length > 0){
+    warnings.push(`⚠ 최소 인원 규칙 위반 (${violatedDays.length}일): ${violatedDays.map(di=>DAYS[di].label).join(', ')}`);
+  }
+
   scheduleGrid = grid;
   lastWarnings = warnings;
   document.getElementById('genStatus').innerHTML = `생성 완료. 경고 ${warnings.length}건.`;
@@ -437,7 +465,8 @@ function renderScheduleTab(){
   let html = '<tr><th style="position:sticky;left:0;">근무자</th>';
   DAYS.forEach((d,di)=>{
     const periodStart = (di > 0 && di % 28 === 0) ? ' period-start' : '';
-    html += `<th class="${d.isHoliday ? 'holiday-col' : ''}${periodStart}">${d.label}</th>`;
+    const violation = violatedDays.includes(di) ? ' day-violation' : '';
+    html += `<th data-day="${di}" class="${d.isHoliday ? 'holiday-col' : ''}${periodStart}${violation}">${d.label}</th>`;
   });
   html += '</tr>';
   for(let idx=0; idx<6; idx++){
@@ -445,7 +474,8 @@ function renderScheduleTab(){
     for(let di=0; di<DAYS.length; di++){
       const code = scheduleGrid[idx][di];
       const periodStart = (di > 0 && di % 28 === 0) ? ' period-start' : '';
-      html += `<td class="${DAYS[di].isHoliday ? 'holiday-col' : ''}${periodStart}"><select class="cell-select c-${code}" data-emp="${idx}" data-day="${di}">` +
+      const violation = violatedDays.includes(di) ? ' day-violation' : '';
+      html += `<td data-day="${di}" class="${DAYS[di].isHoliday ? 'holiday-col' : ''}${periodStart}${violation}"><select class="cell-select c-${code}" data-emp="${idx}" data-day="${di}">` +
         SHIFT_CODES.map(c=>`<option value="${c}" ${c===code?'selected':''}>${c==='O'?'휴':CODE_LABEL[c]}</option>`).join('') +
         `</select></td>`;
     }
@@ -459,12 +489,22 @@ function renderScheduleTab(){
       scheduleGrid[emp][day] = newCode;
       SHIFT_CODES.forEach(c=> e.target.classList.remove('c-'+c));
       e.target.classList.add('c-'+newCode);
+      violatedDays = computeViolatedDays(scheduleGrid);
+      applyViolationHighlight();
       renderStatTables();
     });
   });
 
   // 통계 (4주 단위 세분화)
   renderStatTables();
+}
+
+// 전체 재렌더링 없이, 규칙 위반 날짜의 빨간 테두리 표시만 갱신한다 (수동 셀 수정 시 사용).
+function applyViolationHighlight(){
+  const table = document.getElementById('schedTable');
+  table.querySelectorAll('[data-day]').forEach(el=>{
+    el.classList.toggle('day-violation', violatedDays.includes(+el.dataset.day));
+  });
 }
 
 // ===== 공통: 파일 다운로드 =====

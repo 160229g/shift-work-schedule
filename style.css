@@ -96,6 +96,8 @@
   .weekend-col{ background:var(--weekend-bg) !important; }
   .holiday-col{ background:var(--holiday-bg) !important; box-shadow: inset 0 0 0 1px var(--holiday-line); }
   th.holiday-col{ color:var(--holiday-text) !important; }
+  .day-violation{ outline: 2px solid #EF4444; outline-offset: -2px; position:relative; z-index:1; }
+  th.day-violation{ color:#EF4444 !important; }
   table.sched th.period-start, table.sched td.period-start{ border-left:3px solid var(--heading) !important; }
   .legend{ display:flex; gap:16px; flex-wrap:wrap; margin:6px 0 14px; font-size:12px; color:var(--muted);}
   .legend span{ display:inline-flex; align-items:center; gap:5px;}
