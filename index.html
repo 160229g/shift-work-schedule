@@ -12,6 +12,10 @@
 <header>
   <h1>교대근무 스케줄러</h1>
   <span class="sub">6인 · 12주(84일) 생성 · 제공된 근무패턴(인원별 84일) 그대로 배정</span>
+  <div class="year-quick">
+    <label for="yearQuickSelect">연도</label>
+    <select id="yearQuickSelect"></select>
+  </div>
 </header>
 
 <main>
@@ -42,7 +46,7 @@
 
   <div class="card">
     <h2><span class="n">4</span>휴무 픽스 (인원별 최대 6일)</h2>
-    <div class="hint" style="margin-bottom:10px;">지정한 날짜는 해당 근무자가 무조건 휴무로 고정되며, 원래 근무는 당일 S근무자가 대직합니다.</div>
+    <div class="hint" style="margin-bottom:10px;">지정한 날짜는 해당 근무자가 무조건 휴무로 고정되며, 원래 근무는 당일 S근무자가 대직합니다.<br>연도 없이 <b>월-일</b>만 입력하세요 (예: <b>08-15</b>). 연도는 현재 스케줄 기간에 맞춰 자동으로 적용됩니다.</div>
     <div class="emp-grid" id="fixOffGrid"></div>
   </div>
 
