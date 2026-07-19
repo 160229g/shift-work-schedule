@@ -63,6 +63,7 @@ let scheduleGrid = null;
 let lastWarnings = [];
 let periodLocked = [false, false, false];
 let violatedDays = [];
+let fixedOffDayIndices = Array.from({length:6}, () => []);
 
 function fmt(d){
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -263,6 +264,20 @@ function computeViolatedDays(currentGrid){
     }
     return violated;
 }
+// 근무자별로 휴무 픽스에 입력한 날짜가 현재 DAYS 범위에서 몇 번째 날인지 모아둔다 (스케줄 표 초록 테두리 표시용).
+function computeFixedOffDayIndices(){
+    const result = Array.from({length:6}, () => []);
+    for(let i=0; i<6; i++){
+        for(let k=0; k<6; k++){
+            const fixDate = fixedOff[i][k];
+            if(!fixDate) continue;
+            const di = DAYS.findIndex(d => d.iso === fixDate);
+            if(di === -1) continue;
+            result[i].push(di);
+        }
+    }
+    return result;
+}
 
 function generateSchedule(){
   const startISO = document.getElementById('startDate').value;
@@ -276,6 +291,8 @@ function generateSchedule(){
     periodLocked = [false, false, false];
     ['lockP0','lockP1','lockP2'].forEach(id=>{ const el = document.getElementById(id); if(el) el.checked = false; });
   }
+
+  fixedOffDayIndices = computeFixedOffDayIndices();
 
   const grid = Array.from({length:6}, ()=>[]);
   for(let idx=0; idx<6; idx++){
@@ -477,7 +494,8 @@ function renderScheduleTab(){
       const code = scheduleGrid[idx][di];
       const periodStart = (di > 0 && di % 28 === 0) ? ' period-start' : '';
       const violation = violatedDays.includes(di) ? ' day-violation' : '';
-      html += `<td data-day="${di}" class="${DAYS[di].isHoliday ? 'holiday-col' : ''}${periodStart}${violation}"><select class="cell-select c-${code}" data-emp="${idx}" data-day="${di}">` +
+      const isFixedOff = fixedOffDayIndices[idx].includes(di) ? ' fixed-off-select' : '';
+      html += `<td data-day="${di}" class="${DAYS[di].isHoliday ? 'holiday-col' : ''}${periodStart}${violation}"><select class="cell-select c-${code}${isFixedOff}" data-emp="${idx}" data-day="${di}">` +
         SHIFT_CODES.map(c=>`<option value="${c}" ${c===code?'selected':''}>${c==='O'?'휴':CODE_LABEL[c]}</option>`).join('') +
         `</select></td>`;
     }
@@ -593,6 +611,8 @@ document.getElementById('csvInput').addEventListener('change', (e)=>{
       }
       scheduleGrid = grid;
       lastWarnings = [];
+      violatedDays = computeViolatedDays(scheduleGrid);
+      fixedOffDayIndices = computeFixedOffDayIndices();
       renderEmpNameGrid();
       renderFixOffTab();
       refreshHolidayNote();
@@ -715,6 +735,8 @@ document.getElementById('jsonInput').addEventListener('change', (e)=>{
       periodLocked = data.periodLocked || [false, false, false];
       ['lockP0','lockP1','lockP2'].forEach((id,p)=>{ const el = document.getElementById(id); if(el) el.checked = !!periodLocked[p]; });
       DAYS = buildDays(data.startDate, (data.daysIso && data.daysIso.length) || 84);
+      fixedOffDayIndices = computeFixedOffDayIndices();
+      violatedDays = scheduleGrid ? computeViolatedDays(scheduleGrid) : [];
       renderEmpNameGrid();
       renderFixOffTab();
       refreshHolidayNote();
