@@ -25,10 +25,11 @@
     --W:#F59E0B;
     --AS:#F43F5E;
     --O:#E2E8F0;
-    --weekend-bg:#F8FAFC;
-    --holiday-bg:#FFE4E6;
-    --holiday-line:#FCA5B1;
-    --holiday-text:#BE123C;
+    --weekend-bg:#E2E8F0;
+    --weekend-ring:#94A3B8;
+    --holiday-bg:#FFD3D9;
+    --holiday-line:#FB7185;
+    --holiday-text:#9F1239;
   }
   *{box-sizing:border-box;}
   body{
@@ -94,8 +95,12 @@
   .stat-section-title{ font-size:13px; margin:16px 0 6px; color:var(--heading); font-weight:700;}
   .stat-section-title:first-child{ margin-top:0;}
   .weekend-col{ background:var(--weekend-bg) !important; }
-  .holiday-col{ background:var(--holiday-bg) !important; box-shadow: inset 0 0 0 1px var(--holiday-line); }
+  td.weekend-col select.cell-select, td.weekend-col .cell{ box-shadow: inset 0 0 0 2px var(--weekend-ring); }
+  table.sched th.dow-sat{ color:var(--accent2); }
+  table.sched th.dow-sun{ color:var(--sun); }
+  .holiday-col{ background:var(--holiday-bg) !important; }
   th.holiday-col{ color:var(--holiday-text) !important; }
+  td.holiday-col select.cell-select, td.holiday-col .cell{ box-shadow: inset 0 0 0 2px var(--holiday-line); }
   .day-violation{ outline: 2px solid #EF4444; outline-offset: -2px; position:relative; z-index:1; }
   th.day-violation{ color:#EF4444 !important; }
   select.fixed-off-select{ outline: 2px solid #10B981; outline-offset: -1px; }

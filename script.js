@@ -475,17 +475,22 @@ function renderLegend(){
   });
 }
 
+// 주말/공휴일 칸에 공통으로 붙일 클래스 (진한 배경/테두리로 구분 표시)
+function dayColClass(d){
+  return (d.isHoliday ? ' holiday-col' : (d.isWeekend ? ' weekend-col' : '')) + (d.dow===6 ? ' dow-sat' : d.dow===0 ? ' dow-sun' : '');
+}
+
 function renderScheduleTab(){
   renderLegend();
   const warnArea = document.getElementById('warnArea');
   warnArea.innerHTML = lastWarnings.length ? `<div class="warn-box"><b>⚠ 경고 및 적용 사항</b><br>${lastWarnings.slice(0,10).map(w=>`· ${w}`).join('<br>')}</div>` : '';
-  
+
   const table = document.getElementById('schedTable');
   let html = '<tr><th style="position:sticky;left:0;">근무자</th>';
   DAYS.forEach((d,di)=>{
     const periodStart = (di > 0 && di % 28 === 0) ? ' period-start' : '';
     const violation = violatedDays.includes(di) ? ' day-violation' : '';
-    html += `<th data-day="${di}" class="${d.isHoliday ? 'holiday-col' : ''}${periodStart}${violation}">${d.label}</th>`;
+    html += `<th data-day="${di}" class="${dayColClass(d)}${periodStart}${violation}">${d.label}</th>`;
   });
   html += '</tr>';
   for(let idx=0; idx<6; idx++){
@@ -495,7 +500,7 @@ function renderScheduleTab(){
       const periodStart = (di > 0 && di % 28 === 0) ? ' period-start' : '';
       const violation = violatedDays.includes(di) ? ' day-violation' : '';
       const isFixedOff = fixedOffDayIndices[idx].includes(di) ? ' fixed-off-select' : '';
-      html += `<td data-day="${di}" class="${DAYS[di].isHoliday ? 'holiday-col' : ''}${periodStart}${violation}"><select class="cell-select c-${code}${isFixedOff}" data-emp="${idx}" data-day="${di}">` +
+      html += `<td data-day="${di}" class="${dayColClass(DAYS[di])}${periodStart}${violation}"><select class="cell-select c-${code}${isFixedOff}" data-emp="${idx}" data-day="${di}">` +
         SHIFT_CODES.map(c=>`<option value="${c}" ${c===code?'selected':''}>${c==='O'?'휴':CODE_LABEL[c]}</option>`).join('') +
         `</select></td>`;
     }
@@ -545,7 +550,7 @@ async function exportXlsx(){
   for(let p=0; p<3; p++){
     const startDi = p*28, endDi = Math.min(startDi+28, DAYS.length);
     const ws = wb.addWorksheet(periodLabels[p]);
-    const headerRow = ws.addRow(['근무자', ...DAYS.slice(startDi, endDi).map(d=>d.label)]);
+    const headerRow = ws.addRow(['근무자', ...DAYS.slice(startDi, endDi).map(d=>d.label), '휴무일수']);
     headerRow.eachCell(cell=>{
       cell.font = {bold:true};
       cell.alignment = {horizontal:'center', vertical:'middle'};
@@ -554,6 +559,8 @@ async function exportXlsx(){
     for(let idx=0; idx<6; idx++){
       const rowVals = [EMP_NAMES[idx]];
       for(let di=startDi; di<endDi; di++) rowVals.push(scheduleGrid[idx][di] === 'O' ? '휴' : scheduleGrid[idx][di]);
+      const offCount = scheduleGrid[idx].slice(startDi, endDi).filter(c=>c==='O').length;
+      rowVals.push(offCount);
       const row = ws.addRow(rowVals);
       row.getCell(1).font = {bold:true};
       row.getCell(1).alignment = {horizontal:'left', vertical:'middle'};
@@ -564,8 +571,11 @@ async function exportXlsx(){
         cell.fill = {type:'pattern', pattern:'solid', fgColor:{argb:'FF'+SHIFT_HEX[code]}};
         cell.font = {bold:true, color:{argb:'FF'+SHIFT_TEXT_HEX[code]}};
       }
+      const offCell = row.getCell(endDi - startDi + 2);
+      offCell.alignment = {horizontal:'center', vertical:'middle'};
+      offCell.font = {bold:true};
     }
-    ws.columns.forEach((col, i)=>{ col.width = i===0 ? 12 : 6; });
+    ws.columns.forEach((col, i)=>{ col.width = i===0 || i===ws.columnCount-1 ? 12 : 6; });
     ws.eachRow(row=>{
       row.eachCell(cell=>{
         cell.border = {top:{style:'thin',color:{argb:'FFE2E8F0'}}, left:{style:'thin',color:{argb:'FFE2E8F0'}}, bottom:{style:'thin',color:{argb:'FFE2E8F0'}}, right:{style:'thin',color:{argb:'FFE2E8F0'}}};
@@ -632,15 +642,17 @@ function buildPeriodTableEl(startDi, endDi){
   table.className = 'sched';
   let html = '<tr><th style="position:static;">근무자</th>';
   for(let di=startDi; di<endDi; di++){
-    html += `<th class="${DAYS[di].isHoliday ? 'holiday-col' : ''}">${DAYS[di].label}</th>`;
+    html += `<th class="${dayColClass(DAYS[di])}">${DAYS[di].label}</th>`;
   }
-  html += '</tr>';
+  html += '<th style="position:static;">휴무일수</th></tr>';
   for(let idx=0; idx<6; idx++){
     html += `<tr><td class="emp-name" style="position:static;">${EMP_NAMES[idx]}</td>`;
     for(let di=startDi; di<endDi; di++){
       const code = scheduleGrid[idx][di];
-      html += `<td class="${DAYS[di].isHoliday ? 'holiday-col' : ''}"><div class="cell c-${code}">${code === 'O' ? '휴' : code}</div></td>`;
+      html += `<td class="${dayColClass(DAYS[di])}"><div class="cell c-${code}">${code === 'O' ? '휴' : code}</div></td>`;
     }
+    const offCount = scheduleGrid[idx].slice(startDi, endDi).filter(c=>c==='O').length;
+    html += `<td style="position:static;"><div class="cell" style="color:var(--text);font-weight:700;">${offCount}</div></td>`;
     html += '</tr>';
   }
   table.innerHTML = html;
