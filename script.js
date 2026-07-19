@@ -95,7 +95,7 @@ function renderFixOffTab(){
     const box = document.createElement('div');
     box.className='emp-box';
     let html = `<div class="name">${EMP_NAMES[i]}</div><div class="off-list">`;
-    for(let k=0;k<3;k++){
+    for(let k=0;k<6;k++){
       const val = fixedOff[i][k] || '';
       html += `<input type="date" min="${minD}" max="${maxD}" value="${val}" data-idx="${i}" data-k="${k}" class="fixOffInput">`;
     }
@@ -166,7 +166,7 @@ function generateSchedule(){
 
   // 1. Fixed Off (잠긴 구간의 날짜는 건너뜀)
   for(let i=0; i<6; i++){
-    for(let k=0; k<3; k++){
+    for(let k=0; k<6; k++){
       const fixDate = fixedOff[i][k];
       if(!fixDate) continue;
       const di = DAYS.findIndex(d => d.iso === fixDate);
