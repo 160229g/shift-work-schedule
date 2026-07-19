@@ -163,7 +163,7 @@ function renderFixOffTab(){
     let html = `<div class="name">${EMP_NAMES[i]}</div><div class="off-list">`;
     for(let k=0;k<6;k++){
       const val = isoToMD(fixedOff[i][k]);
-      html += `<input type="text" inputmode="numeric" placeholder="0801" maxlength="4" value="${val}" data-idx="${i}" data-k="${k}" class="fixOffInput">`;
+      html += `<input type="text" inputmode="numeric" maxlength="4" value="${val}" data-idx="${i}" data-k="${k}" class="fixOffInput">`;
     }
     html += `</div>`;
     box.innerHTML = html;
