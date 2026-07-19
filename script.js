@@ -236,6 +236,16 @@ const EMP_PATTERN_84 = [
   ['H','S','S','N','W','O','O','S','S','N','W','O','H','AS','S','N','W','O','H','O','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','H','AS','S','N','W','O','H','O','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O']
 ];
 
+// 근무패턴 ver.2 (근무패턴ver.2 .xlsx 제공) - 인원별 84일 그대로 사용 (가공 없음)
+const EMP_PATTERN_84_V2 = [
+  ['S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS'],
+  ['N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O'],
+  ['O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W'],
+  ['S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O'],
+  ['W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N'],
+  ['H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O','O','S','S','N','W','O','O','AS','S','N','W','O','H','AS','O','N','W','O','H','S','O','N','W','O','H','S','S','N','W','O','H','S','S','N','W','O']
+];
+
 // 요일별 최소 인원 규칙: 월~토는 S,N,W,H 4명 이상, 일요일은 AS,N,W 3명 이상.
 function dayRequirement(dow){
     return dow === 0 ? {shifts: SUNDAY_CRITICAL_SHIFTS, min: SUNDAY_CRITICAL_MIN} : {shifts: CRITICAL_SHIFTS, min: CRITICAL_MIN};
@@ -279,7 +289,8 @@ function computeFixedOffDayIndices(){
     return result;
 }
 
-function generateSchedule(){
+function generateSchedule(pattern){
+  pattern = pattern || EMP_PATTERN_84;
   const startISO = document.getElementById('startDate').value;
   const prevGrid = scheduleGrid;
   const prevDays = DAYS;
@@ -297,7 +308,7 @@ function generateSchedule(){
   const grid = Array.from({length:6}, ()=>[]);
   for(let idx=0; idx<6; idx++){
     for(let di=0; di<DAYS.length; di++){
-      grid[idx][di] = EMP_PATTERN_84[idx][di % EMP_PATTERN_84[idx].length];
+      grid[idx][di] = pattern[idx][di % pattern[idx].length];
     }
   }
 
@@ -398,11 +409,13 @@ function generateSchedule(){
 
   scheduleGrid = grid;
   lastWarnings = warnings;
-  document.getElementById('genStatus').innerHTML = `생성 완료. 경고 ${warnings.length}건.`;
+  const patternLabel = pattern === EMP_PATTERN_84_V2 ? ' (근무패턴 ver.2)' : '';
+  document.getElementById('genStatus').innerHTML = `생성 완료${patternLabel}. 경고 ${warnings.length}건.`;
   renderScheduleTab();
 }
 
-document.getElementById('genBtn').addEventListener('click', generateSchedule);
+document.getElementById('genBtn').addEventListener('click', ()=> generateSchedule(EMP_PATTERN_84));
+document.getElementById('genBtnV2').addEventListener('click', ()=> generateSchedule(EMP_PATTERN_84_V2));
 ['lockP0','lockP1','lockP2'].forEach((id,p)=>{
   document.getElementById(id).addEventListener('change', e=>{
     periodLocked[p] = e.target.checked;
