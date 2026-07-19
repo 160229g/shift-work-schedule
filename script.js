@@ -70,14 +70,16 @@ function fmt(d){
 }
 const DOW_KR = ['일','월','화','수','목','금','토'];
 
-// 휴무 픽스 입력용: 연도 없이 "월-일"만 입력받고, 스케줄 기간에 맞는 연도를 자동으로 붙여준다.
+// 휴무 픽스 입력용: 연도 없이 "월일"(예: 0801)만 입력받고, 스케줄 기간에 맞는 연도를 자동으로 붙여준다.
 function isoToMD(iso){
   if(!iso) return '';
   const parts = iso.split('-');
-  return `${parts[1]}-${parts[2]}`;
+  return `${parts[1]}${parts[2]}`;
 }
 function mdToIso(mdStr, minD, maxD){
-  const m = mdStr.trim().match(/^(\d{1,2})[-\/.](\d{1,2})$/);
+  const raw = mdStr.trim();
+  // "0801" 4자리를 기본으로 받고, "08-01"/"8/1" 같은 구분자 입력도 함께 허용한다.
+  const m = raw.match(/^(\d{2})(\d{2})$/) || raw.match(/^(\d{1,2})[-\/.](\d{1,2})$/);
   if(!m) return null;
   const mm = m[1].padStart(2,'0'), dd = m[2].padStart(2,'0');
   const minYear = +minD.slice(0,4), maxYear = +maxD.slice(0,4);
@@ -160,7 +162,7 @@ function renderFixOffTab(){
     let html = `<div class="name">${EMP_NAMES[i]}</div><div class="off-list">`;
     for(let k=0;k<6;k++){
       const val = isoToMD(fixedOff[i][k]);
-      html += `<input type="text" inputmode="numeric" placeholder="월-일 (예: 08-15)" maxlength="5" value="${val}" data-idx="${i}" data-k="${k}" class="fixOffInput">`;
+      html += `<input type="text" inputmode="numeric" placeholder="0801" maxlength="4" value="${val}" data-idx="${i}" data-k="${k}" class="fixOffInput">`;
     }
     html += `</div>`;
     box.innerHTML = html;
